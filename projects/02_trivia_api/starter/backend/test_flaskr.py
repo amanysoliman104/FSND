@@ -39,34 +39,33 @@ class TriviaTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['success'], True)
-        self.assertTrue(data['questions'])
+        self.assertEqual(len(data['questions']),10)
         self.assertTrue(data['total_questions'])
         
    
     # test delete fun
-    def test_delete_question_failed(self):
-        response = self.client().delete('/questions/<int:question_id>')
-        #self.assertEqual(response.status_code, 200)
-        # Test to see if it exists, should return a 404 (not found)
-        #re = self.client().get('/questions/<int:question_id>')
-        self.assertEqual(response.status_code, 404)
+    def test_delete_question(self):
+        response = self.client().delete('/questions/4')
+        data = json.loads(response.data)
+        question=Question.query.filter(Question.id==4).one_or_none()
+
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(data['success'], True)
+        self.assertEqual(data['deleted'], 4)
+        self.assertEqual(question,None )
+
        
         
-    def test_question_creation(self):
-        response = self.client().get('/questions')
+    def test_question_search(self):
+        response = self.client().post('/questions',json={'searchTerm': 'title'})
         data = json.loads(response.data)
+        print(data)
+
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['success'], True)
-       
-    # def test_question_search(self):
-    #     res = self.client().post('/books', json={'search': 'applejacks'})
-    #     data = json.loads(res.data)
-
-    #     self.assertEqual(res.status_code, 200)
-    #     self.assertEqual(data['success'], True)
-    #     self.assertEqual(data['total_books'], 0)
-    #     self.assertEqual(len(data['books']), 0)
+        self.assertTrue(data['total_questions'])
+        self.assertEqual(len(data['questions']), 2)
 
           
 

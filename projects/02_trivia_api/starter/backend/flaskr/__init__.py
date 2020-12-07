@@ -2,6 +2,7 @@ import os
 from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from sqlalchemy import func
 import random
 #from frontend.src.base_url import API_URL
 
@@ -14,7 +15,7 @@ def create_app(test_config=None):
   app = Flask(__name__)
   setup_db(app)
   #@TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
-  CORS(app)
+  CORS(app)#resources={r"/*/api/*":{"origins":"*"}})
     
 
   
@@ -23,7 +24,10 @@ def create_app(test_config=None):
   @app.after_request
   def after_request(response):
     response.headers.add('Access-Control-Allow-Headers','Content-Type,Authorization,true')
+    response.headers.add('Access-Control-Allow-Credentials',"true")
+    #response.headers.add('Access-Control-Allow-Origin')
     response.headers.add('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE')
+
     return response
 
 
@@ -74,18 +78,11 @@ def create_app(test_config=None):
     #temp_list=[]
     questions=Question.query.all()
     current_question=paginate_questions(request,questions)
-    # for cat_id in current_question:
-    #   category=Category.query.get(cat_id['category'])
-    #   if not(cat_id['category'] in temp_list):
-    #     categories.append(category)
-    #   temp_list.append(cat_id['category'])
-    # print(categories)
-    # #cat_dict=dict(for c in categories)
     return jsonify({
       'success':True,
       'questions':current_question,
       'total_questions':len(Question.query.all()),
-      'categories':categories_dict
+      'categories':categories_dict,
       })
 
   '''
@@ -129,46 +126,45 @@ def create_app(test_config=None):
   '''
   @app.route('/questions', methods=['POST'])
   def create_or_search_question():
-    
+      
     body = request.get_json()
-    search_term = body.get('searchTerm')
-    if search_term:
-      try:
-        
-        print("ooooooooooooooooooo "+search_term)
-        questions=Question.query.filter(func.lower(Question.question).contains(search_term.lower())).all()
-        formated_quest=[q.format() for q in questions]
-        
+    question = body.get('question', None)
+    answer = body.get('answer', None)
+    category = body.get('category', None)
+    difficulty  =body.get('difficulty',None)
+    search_term = body.get('searchTerm',None)
+    try:
+      if search_term:  
+        #questions=Question.query.filter(func.lower(Question.question).contains(search_term.lower())).all()
+        questions=Question.query.filter(Question.question.ilike('%{}%'.format(search_term)))
+        #formated_quest=[q.format() for q in questions]
+        #print(len(formated_quest))
+        current_questions=paginate_questions(request,questions)
+        print(len(current_questions))
+
+
         return jsonify({
           'success': True,
-          'questions':formated_quest,
-          'total_questions':len(questions)
-
-          })
-      except:
-        abort(404) 
-    else:
-    
-      question = body.get('question', None)
-      answer = body.get('answer', None)
-      category = body.get('category', None)
-      difficulty  =body.get('difficulty',None)
-      try:
+          'questions':current_questions,
+          'total_questions':len(questions.all())
+          
+            })
+      else:
+            
         question = Question(question=question, answer=answer, category=category,difficulty=difficulty)
         question.insert()
 
         selection = Question.query.order_by(Question.id).all()
         current_questions = paginate_questions(request, selection)
-       
+           
         return jsonify({
           'success': True,
           'created': question.id,
           'questions': current_questions,
           'total_questions': len(Question.query.all())
-        })
-
-      except:
-        abort(422)
+            })
+    except:
+      abort(422)
 
   '''
   @TODO: 
@@ -183,11 +179,37 @@ def create_app(test_config=None):
   '''
   @TODO: 
   Create a GET endpoint to get questions based on category. 
-
+  
   TEST: In the "List" tab / main screen, clicking on one of the 
   categories in the left column will cause only questions of that 
   category to be shown. 
   '''
+  @app.route('/categories/<int:catigory_id>/questions',methods=['GET'])
+  def get_questions_by_cateogry(catigory_id):
+    cat_questions=[]
+    body = request.get_json()
+    try:
+      category=Category.query.get(catigory_id)
+      category_type=category.type
+      print(category_type)
+      questions=Question.query.filter(Question.category==catigory_id)
+      cat_questions=[q.format() for q in questions]
+      print(cat_questions)
+      return jsonify({
+        'success':true,
+        'questions':cat_questions,
+        'total_questions':len(cat_questions),
+        'current_category':category_type
+          })
+    except:
+      abort(404)
+
+
+
+
+
+
+
 
 
   '''
@@ -201,7 +223,7 @@ def create_app(test_config=None):
   one question at a time is displayed, the user is allowed to answer
   and shown whether they were correct or not. 
   '''
-
+   
   '''
   @TODO: 
   Create error handlers for all expected errors 
