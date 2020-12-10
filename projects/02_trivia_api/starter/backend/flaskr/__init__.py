@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, abort, jsonify
+from flask import Flask, request, abort, jsonify 
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from sqlalchemy import func
@@ -124,11 +124,21 @@ def create_app(test_config=None):
   the form will clear and the question will appear at the end of the last page
   of the questions list in the "List" tab.  
   '''
+  '''
+  @TODO: 
+  Create a POST endpoint to get questions based on a search term. 
+  It should return any questions for whom the search term 
+  is a substring of the question. 
+
+  TEST: Search by any phrase. The questions list will update to include 
+  only question that include that string within their question. 
+  Try using the word "title" to start. 
+  '''
   @app.route('/questions', methods=['POST'])
   def create_or_search_question():
       
     body = request.get_json()
-    question = body.get('question', None)
+    quest = body.get('question', None)
     answer = body.get('answer', None)
     category = body.get('category', None)
     difficulty  =body.get('difficulty',None)
@@ -138,10 +148,7 @@ def create_app(test_config=None):
         #questions=Question.query.filter(func.lower(Question.question).contains(search_term.lower())).all()
         questions=Question.query.filter(Question.question.ilike('%{}%'.format(search_term)))
         #formated_quest=[q.format() for q in questions]
-        #print(len(formated_quest))
         current_questions=paginate_questions(request,questions)
-        print(len(current_questions))
-
 
         return jsonify({
           'success': True,
@@ -151,7 +158,7 @@ def create_app(test_config=None):
             })
       else:
             
-        question = Question(question=question, answer=answer, category=category,difficulty=difficulty)
+        question = Question(question=quest, answer=answer, category=category,difficulty=difficulty)
         question.insert()
 
         selection = Question.query.order_by(Question.id).all()
@@ -165,17 +172,6 @@ def create_app(test_config=None):
             })
     except:
       abort(422)
-
-  '''
-  @TODO: 
-  Create a POST endpoint to get questions based on a search term. 
-  It should return any questions for whom the search term 
-  is a substring of the question. 
-
-  TEST: Search by any phrase. The questions list will update to include 
-  only question that include that string within their question. 
-  Try using the word "title" to start. 
-  '''
   '''
   @TODO: 
   Create a GET endpoint to get questions based on category. 
@@ -187,30 +183,19 @@ def create_app(test_config=None):
   @app.route('/categories/<int:catigory_id>/questions',methods=['GET'])
   def get_questions_by_cateogry(catigory_id):
     cat_questions=[]
-    body = request.get_json()
     try:
       category=Category.query.get(catigory_id)
       category_type=category.type
-      print(category_type)
       questions=Question.query.filter(Question.category==catigory_id)
       cat_questions=[q.format() for q in questions]
-      print(cat_questions)
       return jsonify({
-        'success':true,
+        'success':True,
         'questions':cat_questions,
         'total_questions':len(cat_questions),
         'current_category':category_type
           })
     except:
       abort(404)
-
-
-
-
-
-
-
-
 
   '''
   @TODO: 
@@ -223,13 +208,146 @@ def create_app(test_config=None):
   one question at a time is displayed, the user is allowed to answer
   and shown whether they were correct or not. 
   '''
-   
+  @app.route('/quizzes',methods=['POST']) 
+  def play_quizze():
+    flage=True
+    quizquestion_as_dic={}
+    body = request.get_json()
+    previousquestions=body.get('previous_questions',None)
+    quizcategory=body.get('quiz_category',None) #quizcategory is dict
+    #quizcategory return type=click id=0 when choise ALL in categories list 
+
+    if quizcategory['type']=='click':
+      #pop random question from all_questions list 
+      all_questions=Question.query.all()
+      try:
+        if previousquestions is None: 
+          quizquestion_as_list=random.choices(all_questions)
+
+          for q in quizquestion_as_list:
+            quizquestion_as_dic={
+            'id':q.id,
+            'question':q.question,
+            'category':q.category,
+            'answer':q.answer
+            }
+
+          #quizquestion_as_dic=dict(((q.question,q.answer) for q in quizquestion_as_list))
+          return jsonify({
+            'success':True,
+            'question':quizquestion_as_dic,
+            'quizCategory':quizcategory,
+            'total_quizequestion':len(quizquestion_as_list),
+            'total_questions':len(all_questions)
+
+            })
+        else:
+          #pop random question from all_questions list except  previousQuestions
+          quizquestion_as_list=random.choices(all_questions)
+          while flage:
+            flage=False
+            if previousquestions in  quizquestion_as_list:
+              flage=True
+              quizquestion_as_list=random.choices(all_questions)
+          #quizquestion_as_dic=dict(((q.question,q.answer) for q in quizquestion_as_list)) 
+          for q in quizquestion_as_list:
+            quizquestion_as_dic={
+            'id':q.id,
+            'question':q.question,
+            'category':q.category,
+            'answer':q.answer
+            }  
+          return jsonify({
+            'success':True,
+            'question':quizquestion_as_dic,
+            'total_quizequestion':len(quizquestion_as_list),
+            'total_questions':len(all_questions)
+            })
+      except:
+        abort(404)
+    else:
+      #pop random question from all_questions for spacific  category list
+      category_id=quizcategory['id']
+      questions_of_category=Question.query.filter(Question.category==category_id).all()
+      try:
+        
+        if previousquestions is None:
+          
+          # choices return list 
+          quizquestion_as_list=random.choices(questions_of_category)
+          for q in quizquestion_as_list:
+            quizquestion_as_dic={
+            'id':q.id,
+            'question':q.question,
+            'category':q.category,
+            'answer':q.answer
+            }
+
+          #quizquestion_as_dic=dict(((q.question,q.answer) for q in quizquestion_as_list))
+          return jsonify({
+            'success':True,
+            'question':quizquestion_as_dic,
+            'quizCategory':quizcategory,
+            'total_quizequestion':len(quizquestion_as_list),
+            'total_questions':len(questions_of_category)
+
+            })
+        else:
+          #pop random question from all_questions list except  previousQuestions
+          quizquestion_as_list=random.choices(questions_of_category)
+          while flage:
+            flage=False
+            if previousquestions in  quizquestion_as_list:
+              flage=True
+              quizquestion_as_list=random.choices(questions_of_category)
+          #quizquestion_as_dic=dict(((q.question,q.answer) for q in quizquestion_as_list)) 
+          for q in quizquestion_as_list:
+            quizquestion_as_dic={
+            'id':q.id,
+            'question':q.question,
+            'category':q.category,
+            'answer':q.answer
+            }  
+          return jsonify({
+            'success':True,
+            'question':quizquestion_as_dic,
+            'total_quizequestion':len(quizquestion_as_list),
+            'total_questions':len(questions_of_category)
+            })
+
+      except:
+        abort(404)
+
   '''
   @TODO: 
   Create error handlers for all expected errors 
   including 404 and 422. 
   '''
-  
+  @app.errorhandler(404)
+  def not_found(error):
+    return jsonify({
+      "success": False, 
+      "error": 404,
+      "message": "resource not found"
+      }), 404
+
+  @app.errorhandler(422)
+  def unprocessable(error):
+    return jsonify({
+      "success": False, 
+      "error": 422,
+      "message": "unprocessable"
+      }), 422
+
+  @app.errorhandler(400)
+  def bad_request(error):
+    return jsonify({
+      "success": False, 
+      "error": 400,
+      "message": "bad request"
+      }), 400
+
+
   return app
 
     

@@ -35,7 +35,7 @@ class FormView extends Component {
   submitQuestion = (event) => {
     event.preventDefault();
     $.ajax({
-      url: '${"http://127.0.0.1:5000"}/questions', //TODO: update request URL
+      url: '/questions', //TODO: update request URL
       type: "POST",
       dataType: 'json',
       contentType: 'application/json',

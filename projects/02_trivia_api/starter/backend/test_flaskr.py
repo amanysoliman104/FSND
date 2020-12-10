@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 from flaskr import create_app
 from models import setup_db, Question, Category
+import random
 
 
 class TriviaTestCase(unittest.TestCase):
@@ -44,30 +45,66 @@ class TriviaTestCase(unittest.TestCase):
         
    
     # test delete fun
-    def test_delete_question(self):
-        response = self.client().delete('/questions/4')
-        data = json.loads(response.data)
-        question=Question.query.filter(Question.id==4).one_or_none()
+    # def test_delete_question(self):
+    #     res = self.client().delete('/questions/7')
+    #     data = json.loads(res.data)
+    #     question=Question.query.filter(Question.id==4).one_or_none()
 
-        self.assertEqual(response.status_code,200)
-        self.assertEqual(data['success'], True)
-        self.assertEqual(data['deleted'], 4)
-        self.assertEqual(question,None )
+    #     self.assertEqual(res.status_code,200)
+    #     self.assertEqual(data['success'], True)
+    #     self.assertEqual(data['deleted'], 7)
+    #     self.assertEqual(question,None )
 
        
         
-    def test_question_search(self):
-        response = self.client().post('/questions',json={'searchTerm': 'title'})
-        data = json.loads(response.data)
-        print(data)
+    def test_question_search_with_results(self):
+        res = self.client().post('/questions',json={'searchTerm': 'title'})
+        data = json.loads(res.data)
+        #print(data)
 
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        #self.assertTrue(data['total_questions'])
+        self.assertEqual(data['total_questions'], 1)
+
+    def test_get_questions_by_category(self):
+        res = self.client().get('categories/3/questions')
+        data = json.loads(res.data)
+       
+        self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
         self.assertTrue(data['total_questions'])
-        self.assertEqual(len(data['questions']), 2)
+        self.assertEqual(len(data['questions']), 3)
+        self.assertEqual(data['current_category'], 'Geography')
 
-          
+
+    def test_get_allquestions_clicking_on_ALL(self):
+        res = self.client().post('/quizzes',json={
+            'previousQuestions':[],
+            'quiz_category':{'type':'click','id':0}
+
+            })
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertEqual(data['total_quizequestion'], 1)
+        self.assertTrue(data['total_questions'],18)
+
+    def test_get_allquestions_clicking_on_spacific_category(self):
+        res = self.client().post('/quizzes',json={
+            'previousQuestions':[],
+            'quiz_category':{'type':'Art','id':2}
+
+            })
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertEqual(data['total_quizequestion'], 1)
+        self.assertTrue(data['total_questions'],5)
+        
 
 
 # Make the tests conveniently executable
