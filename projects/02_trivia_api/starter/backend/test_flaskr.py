@@ -44,7 +44,7 @@ class TriviaTestCase(unittest.TestCase):
     Write at least one test for each test for successful operation and for expected errors.
     """
     def test_get_paginated_questions(self):
-        response = self.client().get('/questions?page=1')
+        response = self.client().get('/questions')
         data = json.loads(response.data)
         
 
@@ -57,8 +57,7 @@ class TriviaTestCase(unittest.TestCase):
     def test_404_sent_requesting_beyond_valid_page(self):
         res = self.client().get('/questions?page=1000')
         data = json.loads(res.data)
-        print(data)
-
+        
         self.assertEqual(res.status_code, 404)
         self.assertEqual(data['success'], False)
         self.assertEqual(data['message'], 'resource not found')
@@ -84,11 +83,6 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['message'], 'resource not found')
 
 
-
-
-
-
-    #test delete fun
     # def test_delete_question(self):
     #     res = self.client().delete('/questions/1')
     #     data = json.loads(res.data)
@@ -98,6 +92,15 @@ class TriviaTestCase(unittest.TestCase):
     #     self.assertEqual(data['success'], True)
     #     self.assertEqual(data['deleted'], 1)
     #     #self.assertEqual(question,None )
+
+    def test_delete_question_not_found(self):
+        res = self.client().delete('/questions/1000')
+        data = json.loads(res.data)
+       
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'resource not found')
+
 
        
         
@@ -129,32 +132,38 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(len(data['questions']), 3)
         self.assertEqual(data['current_category'], 'Geography')
 
+    def test_get_questions_not_found_category(self):
+        res = self.client().get('categories/10/questions')
+        data = json.loads(res.data)
+       
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'resource not found')
 
-    # def test_get_allquestions_clicking_on_ALL(self):
-    #     res = self.client().post('/quizzes',json={
-    #         'previousQuestions':[],
-    #         'quiz_category':{'type':'click','id':0}
 
-    #         })
-    #     data = json.loads(res.data)
+    def test_get_allquestions_clicking_on_ALL(self):
+        res = self.client().post('/quizzes',json={
+            'previous_questions':None,
+            'quiz_category':{'type':'click','id':0}
+            })
+        data = json.loads(res.data)
 
-    #     self.assertEqual(res.status_code, 200)
-    #     self.assertEqual(data['success'], True)
-    #     self.assertEqual(data['total_quizequestion'], 1)
-    #     self.assertTrue(data['total_questions'],18)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+       
 
-    # def test_get_allquestions_clicking_on_spacific_category(self):
-    #     res = self.client().post('/quizzes',json={
-    #         'previousQuestions':[],
-    #         'quiz_category':{'type':'Art','id':2}
+    def test_get_allquestions_clicking_on_spacific_category(self):
+        res = self.client().post('/quizzes',json={
+            'previous_questions':None,
+            'quiz_category':{'type':'Art','id':2}
 
-    #         })
-    #     data = json.loads(res.data)
+            })
+        data = json.loads(res.data)
 
-    #     self.assertEqual(res.status_code, 200)
-    #     self.assertEqual(data['success'], True)
-    #     self.assertEqual(data['total_quizequestion'], 1)
-    #     self.assertTrue(data['total_questions'],5)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+       
+       
         
 
 

@@ -31,10 +31,13 @@ def create_app(test_config=None):
 
   def paginate_questions(request, selection):
     page = request.args.get('page', 1, type=int)
+    if page>(len(Question.query.all())/10):
+      abort(404)
     start =  (page - 1) * QUESTIONS_PER_PAGE
     end = start + QUESTIONS_PER_PAGE
     questions = [question.format() for question in selection]
     current_questions = questions[start:end]
+    
     return current_questions
   '''
   @TODO: 
@@ -67,14 +70,12 @@ def create_app(test_config=None):
   ten questions per page and pagination at the bottom of the screen for three pages.
   Clicking on the page numbers should update the questions. 
   '''
-  @app.route('/questions?page=<int:page_num>') 
-  def get_questions(page_num):
+  @app.route('/questions') 
+  def get_questions():
     categories=Category.query.all()
     categories_dict=dict(((c.id,c.type) for c in categories))
     questions=Question.query.all()
     current_question=paginate_questions(request,questions)
-    if float(page_num)>float((len(questions)/10)):
-      abort(404)
     
     return jsonify({
       'success':True,
@@ -187,6 +188,8 @@ def create_app(test_config=None):
     try:
       
       category=Category.query.get(catigory_id)
+      if category==None:
+        abort(404)
       category_type=category.type
       questions=Question.query.filter(Question.category==catigory_id)
       cat_questions=[q.format() for q in questions]
@@ -215,78 +218,86 @@ def create_app(test_config=None):
     flage=True
     quizquestion_as_dic={}
     body = request.get_json()
-    previousquestions=body.get('previous_questions',None)
-    quizcategory=body.get('quiz_category',None) #quizcategory is dict
+    previous_questions=body.get('previous_questions',None)
+    quiz_category=body.get('quiz_category',None) #quizcategory is dict
 
     try:
       
-      if quizcategory['type']=='click':
-        if previousquestions is None:
-          quizquestion=Question.query.order_by(func.random())
-          quizquestion_as_dic={
-          'question':quizquestion.question,
-          'id':quizquestion.id,
-          'answer':quizquestion.answer,
-          'category':quizquestion.category,
-          'difficulty':quizquestion.difficulty
-          }
+      if quiz_category['type']=='click':
+        if previous_questions is None:
+          quiz_question=Question.query.order_by(func.random()).first()
+         
+          if quiz_question==None:
+            return jsonify({
+              'success':True
+            })
+          quiz_question_as_dic={
+            'question':quiz_question.question,
+            'id':quiz_question.id,
+            'answer':quiz_question.answer,
+            'category':quiz_question.category,
+            'difficulty':quiz_question.difficulty
+            }
+
           return jsonify({
               'success':True,
-              'question':quizquestion_as_dic
-              # 'quizCategory':quizcategory,
-              # 'total_quizequestion':len(quizquestion_as_list),
-              # 'total_questions':len(all_questions)
-
+              'question':quiz_question_as_dic
               })
         else:
-          if (Question.id.in_(previousquestions)):
-            quizquestion=Question.query.order_by(func.random())
-          quizquestion_as_dic={
-            'question':quizquestion.question,
-            'id':quizquestion.id,
-            'answer':quizquestion.answer,
-            'category':quizquestion.category,
-            'difficulty':quizquestion.difficulty
-              }
+          quiz_question=Question.query.filter(Question.id.notin_(previous_questions)).first()
+          if quiz_question==None:
+            return jsonify({
+              'success':True
+            })
+             
+          quiz_question_as_dic={
+          'question':quiz_question.question,
+          'id':quiz_question.id,
+          'answer':quiz_question.answer,
+          'category':quiz_question.category,
+          'difficulty':quiz_question.difficulty
+            }
 
           return jsonify({
             'success':True,
-            'question':quizquestion_as_dic
-
+            'question':quiz_question_as_dic
             })
       else:
-        if previousquestions is None:
-          quizquestion=Question.query.order_by(func.random())
+        if previous_questions is None:
+          quiz_question=Question.query.order_by(func.random()).first()
+          if quiz_question==None:
+            return jsonify({
+              'success':True
+            })
           
-          quizquestion_as_dic={
-          'question':quizquestion.question,
-          'id':quizquestion.id,
-          'answer':quizquestion.answer,
-          'category':quizquestion.category,
-          'difficulty':quizquestion.difficulty
-          }
+          quiz_question_as_dic={
+            'question':quiz_question.question,
+            'id':quiz_question.id,
+            'answer':quiz_question.answer,
+            'category':quiz_question.category,
+            'difficulty':quiz_question.difficulty
+            }
           return jsonify({
               'success':True,
-              'question':quizquestion_as_dic
-              # 'quizCategory':quizcategory,
-              # 'total_quizequestion':len(quizquestion_as_list),
-              # 'total_questions':len(all_questions)
-
+              'question':quiz_question_as_dic
               })
         else:
-          if (Question.category.in_(previousquestions)):
-            quizquestion=Question.query.order_by(func.random())
-          quizquestion_as_dic={
-            'question':quizquestion.question,
-            'id':quizquestion.id,
-            'answer':quizquestion.answer,
-            'category':quizquestion.category,
-            'difficulty':quizquestion.difficulty
+          quiz_question=Question.query.filter(Question.category==quiz_category['id']).filter(Question.id.notin_(previous_questions)).first()  
+          if quiz_question==None:
+            return jsonify({
+              'success':True
+            })
+
+          quiz_question_as_dic={
+            'question':quiz_question.question,
+            'id':quiz_question.id,
+            'answer':quiz_question.answer,
+            'category':quiz_question.category,
+            'difficulty':quiz_question.difficulty
               }
           return jsonify({
             'success':True,
-            'question':quizquestion_as_dic
-
+            'question':quiz_question_as_dic
             })
     except:  
       abort(404)
@@ -318,6 +329,14 @@ def create_app(test_config=None):
       "error": 400,
       "message": "bad request"
       }), 400
+  
+  @app.errorhandler(500)
+  def server_error(error):
+    return jsonify({
+      "success": False, 
+      "error": 500,
+      "message": "server error"
+      }), 500
 
 
   return app
